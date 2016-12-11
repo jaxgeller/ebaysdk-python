@@ -30,6 +30,7 @@ HTTP_SSL = {
     True: 'https',
 }
 
+
 class BaseConnection(object):
     """Base Connection Class."""
 
@@ -68,7 +69,7 @@ class BaseConnection(object):
 
         self.base_list_nodes = []
         self.datetime_nodes = []
-        
+
         self._reset()
 
     def debug_callback(self, debug_type, debug_message):
@@ -76,7 +77,7 @@ class BaseConnection(object):
 
     def v(self, *args, **kwargs):
         return getValue(self.response.dict(), *args, **kwargs)
-        
+
     def getNodeText(self, nodelist):
         return getNodeTextUtils(nodelist)
 
@@ -102,12 +103,13 @@ class BaseConnection(object):
         if verb:
             for i, v in enumerate(nodes):
                 if not nodes[i].startswith(verb.lower()):
-                    nodes[i] = "%sresponse.%s" % (verb.lower(), nodes[i].lower())
+                    nodes[i] = "%sresponse.%s" % (
+                        verb.lower(), nodes[i].lower())
 
     def execute(self, verb, data=None, list_nodes=[], verb_attrs=None, files=None):
         "Executes the HTTP request."
         log.debug('execute: verb=%s data=%s' % (verb, data))
-        
+
         self._reset()
 
         self._list_nodes += list_nodes
@@ -117,7 +119,7 @@ class BaseConnection(object):
             self._list_nodes += self.base_list_nodes
 
         self.build_request(verb, data, verb_attrs, files)
-        self.execute_request()        
+        self.execute_request()
 
         if hasattr(self.response, 'content'):
             self.process_response()
@@ -125,10 +127,10 @@ class BaseConnection(object):
 
         log.debug('total time=%s' % (time.time() - self._time))
 
-        return self.response        
+        return self.response
 
     def build_request(self, verb, data, verb_attrs, files=None):
- 
+
         self.verb = verb
         self._request_dict = data
         self._request_id = uuid.uuid4()
@@ -136,9 +138,9 @@ class BaseConnection(object):
         url = self.build_request_url(verb)
 
         headers = self.build_request_headers(verb)
-        headers.update({'User-Agent': UserAgent, 
+        headers.update({'User-Agent': UserAgent,
                         'X-EBAY-SDK-REQUEST-ID': str(self._request_id)})
-                        
+
         # if we are adding files, we ensure there is no Content-Type header already defined
         # otherwise Request will use the existing one which is likely not to be multipart/form-data
         # data must also be a dict so we make it so if needed
@@ -146,15 +148,15 @@ class BaseConnection(object):
         requestData = self.build_request_data(verb, data, verb_attrs)
         if files:
             del(headers['Content-Type'])
-            if isinstance(requestData, basestring):
-                requestData = {'XMLPayload':requestData}
+            if isinstance(requestData, str):
+                requestData = {'XMLPayload': requestData}
 
         request = Request(self.method,
-            url,
-            data=smart_encode_request_data(requestData),
-            headers=headers,
-            files=files,
-        )
+                          url,
+                          data=smart_encode_request_data(requestData),
+                          headers=headers,
+                          files=files,
+                          )
 
         self.request = request.prepare()
 
@@ -168,8 +170,8 @@ class BaseConnection(object):
 
     def execute_request(self):
 
-        log.debug("REQUEST (%s): %s %s" \
-            % (self._request_id, self.request.method, self.request.url))
+        log.debug("REQUEST (%s): %s %s"
+                  % (self._request_id, self.request.method, self.request.url))
         log.debug('headers=%s' % self.request.headers)
         log.debug('body=%s' % self.request.body)
 
@@ -178,18 +180,18 @@ class BaseConnection(object):
             return None
 
         self.response = self.session.send(self.request,
-            verify=True,
-            proxies=self.proxies,
-            timeout=self.timeout,
-            allow_redirects=True
-        )
+                                          verify=True,
+                                          proxies=self.proxies,
+                                          timeout=self.timeout,
+                                          allow_redirects=True
+                                          )
 
         log.debug('RESPONSE (%s):' % self._request_id)
         log.debug('elapsed time=%s' % self.response.elapsed)
         log.debug('status code=%s' % self.response.status_code)
         log.debug('headers=%s' % self.response.headers)
-        log.debug('content=%s' % self.response.text)      
-    
+        log.debug('content=%s' % self.response.text)
+
     def process_response(self, parse_response=True):
         """Post processing of the response"""
 
@@ -201,7 +203,7 @@ class BaseConnection(object):
 
         # set for backward compatibility
         self._response_content = self.response.content
-        
+
         if self.response.status_code != 200:
             self._response_error = self.response.reason
 
@@ -236,7 +238,8 @@ class BaseConnection(object):
                 from bs4 import BeautifulStoneSoup
             except ImportError:
                 from BeautifulSoup import BeautifulStoneSoup
-                log.warn('DeprecationWarning: BeautifulSoup 3 or earlier is deprecated; install bs4 instead\n')
+                log.warn(
+                    'DeprecationWarning: BeautifulSoup 3 or earlier is deprecated; install bs4 instead\n')
 
             self._response_soup = BeautifulStoneSoup(
                 smart_decode(self.response_content)
@@ -263,14 +266,16 @@ class BaseConnection(object):
                     regex = re.compile(b'xmlns="[^"]+"')
                     content = regex.sub(b'', self.response.content)
                 else:
-                    content = "<%sResponse></%sResponse>" % (self.verb, self.verb)
+                    content = "<%sResponse></%sResponse>" % (
+                        self.verb, self.verb)
 
                 dom = parseString(content)
                 self._response_dom = dom.getElementsByTagName(
                     self.verb + 'Response')[0]
 
             except ExpatError as e:
-                raise ConnectionResponseError("Invalid Verb: %s (%s)" % (self.verb, e), self.response)
+                raise ConnectionResponseError(
+                    "Invalid Verb: %s (%s)" % (self.verb, e), self.response)
             except IndexError:
                 self._response_dom = dom
 
@@ -278,7 +283,8 @@ class BaseConnection(object):
 
     def response_dict(self):
         "Returns the response dictionary."
-        log.warn('response_dict() DEPRECATED, use response.dict() or response.reply instead')
+        log.warn(
+            'response_dict() DEPRECATED, use response.dict() or response.reply instead')
 
         return self.response.reply
 
@@ -323,7 +329,8 @@ class BaseConnection(object):
         if len(error_array) > 0:
             # Force all errors to be unicode in a proper way
             error_array = [smart_decode(smart_encode(e)) for e in error_array]
-            error_string = u"{verb}: {message}".format(verb=self.verb, message=u", ".join(error_array))
+            error_string = u"{verb}: {message}".format(
+                verb=self.verb, message=u", ".join(error_array))
 
             return error_string
 
@@ -331,4 +338,3 @@ class BaseConnection(object):
 
     def opendoc(self):
         webbrowser.open(self.config.get('doc_url'))
-
